@@ -8,7 +8,6 @@ const SECRET = process.env.JWT_SECRET;
 router.post("/login", (req, res) => {
   const { email, password } = req.body;
   const query = "SELECT * FROM USERS WHERE email = ?";
-
   db.query(query, [email], (err, results) => {
     if (err) {
       console.error("Error executing query:", err);
@@ -32,6 +31,7 @@ router.post("/login", (req, res) => {
         SECRET,
         { expiresIn: "1d" }
       );
+      console.log(user.role);
       res.status(200).json({
         token,
         email: user.email,
