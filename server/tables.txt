@@ -1,0 +1,68 @@
+CREATE TABLE USERS (
+  user_id INT AUTO_INCREMENT PRIMARY KEY,
+  email VARCHAR(50) UNIQUE NOT NULL,
+  password VARCHAR(20) NOT NULL,
+  role ENUM('doctor', 'nurse') DEFAULT NULL
+);
+
+CREATE TABLE DOCTORS (
+  doctor_id INT PRIMARY KEY AUTO_INCREMENT,
+  user_id INT,
+  doctor_name VARCHAR(20) NOT NULL,
+  doctor_specialization VARCHAR(20) NOT NULL,
+  doctor_contact VARCHAR(10) NOT NULL,
+  FOREIGN KEY (user_id) REFERENCES USERS(user_id) ON DELETE CASCADE
+);
+
+CREATE TABLE NURSES (
+  nurse_id INT PRIMARY KEY AUTO_INCREMENT,
+  user_id INT NOT NULL,
+  nurse_name VARCHAR(20) NOT NULL,
+  nurse_contact VARCHAR(10) NOT NULL,
+  FOREIGN KEY (user_id) REFERENCES USERS(user_id) ON DELETE CASCADE
+);
+
+CREATE TABLE APPOINTMENTS (
+  appointment_id INT PRIMARY KEY AUTO_INCREMENT,
+  patient_name VARCHAR(20),
+  patient_contact VARCHAR(10) NOT NULL,
+  doctor_id INT,
+  nurse_id INT,
+  appointment_date DATE NOT NULL,
+  appointment_time TIME NOT NULL,
+  gender CHAR(1) NOT NULL,
+  age INT(3) NOT NULL,
+  critical ENUM('high', 'mid', 'low'),
+  FOREIGN KEY (doctor_id) REFERENCES DOCTORS(doctor_id) ON DELETE CASCADE,
+  FOREIGN KEY (nurse_id) REFERENCES NURSES(nurse_id) ON DELETE CASCADE
+);
+
+ALTER TABLE APPOINTMENTS
+ADD payment_status ENUM('pending', 'paid') DEFAULT 'pending',
+ADD payment_amount DECIMAL(10, 2) DEFAULT 0.00,
+ADD payment_type ENUM('cash', 'card', 'upi') DEFAULT 'cash';
+
+
+CREATE TABLE PRESCRIPTIONS (
+  prescription_id INT AUTO_INCREMENT NOT NULL,
+  appointment_id INT NOT NULL,
+  doctor_id INT,
+  medicine_name VARCHAR(20) NOT NULL,
+  medicine_dosage VARCHAR(30) NOT NULL,
+  PRIMARY KEY (prescription_id, appointment_id),
+  FOREIGN KEY (appointment_id) REFERENCES APPOINTMENTS(appointment_id) ON DELETE CASCADE,
+  FOREIGN KEY (doctor_id) REFERENCES DOCTORS(doctor_id) ON DELETE SET NULL
+);
+
+CREATE TABLE APPOINTMENT_REQUESTS (
+    request_id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(50) NOT NULL,
+    contact VARCHAR(10) NOT NULL,
+    appointment_date DATE NOT NULL,
+    appointment_time TIME NOT NULL,
+    gender CHAR(1) CHECK (gender IN ('M', 'F', 'O')) NOT NULL,
+    age INT CHECK (age >= 0) NOT NULL,
+    department VARCHAR(50) NOT NULL,
+    request_status ENUM('pending', 'approved', 'rejected') DEFAULT 'pending',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
