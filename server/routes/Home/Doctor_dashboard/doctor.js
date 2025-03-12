@@ -54,36 +54,60 @@ router.get("/appointments/:user_id", (req, res) => {
 
 // Add multiple medicines to a prescription
 router.post("/prescriptions", (req, res) => {
-  const { appointment_id, doctor_id, medicines } = req.body; // medicines should be an array of { medicine_name, medicine_dosage }
+  const { appointment_id, user_id, medicines } = req.body;
 
+  // Validate medicines array
   if (!Array.isArray(medicines) || medicines.length === 0) {
     return res
       .status(400)
       .json({ message: "Medicines must be a non-empty array" });
   }
 
-  const values = medicines.map((med) => [
-    appointment_id,
-    doctor_id,
-    med.medicine_name,
-    med.medicine_dosage,
-  ]);
-  const query = `
-    INSERT INTO PRESCRIPTIONS (appointment_id, doctor_id, medicine_name, medicine_dosage)
-    VALUES ?
-  `;
+  // First get doctor_id from doctors table using user_id
+  db.query(
+    "SELECT doctor_id FROM DOCTORS WHERE user_id = ?",
+    [user_id],
+    (err, doctorResults) => {
+      if (err) {
+        console.error("Error fetching doctor:", err);
+        return res.status(500).json({ message: "Database error" });
+      }
 
-  db.query(query, [values], (err, result) => {
-    if (err) {
-      console.error("Error adding prescriptions:", err);
-      return res.status(500).json({ message: "Failed to add prescriptions" });
+      if (doctorResults.length === 0) {
+        return res.status(404).json({ message: "Doctor not found" });
+      }
+
+      const doctor_id = doctorResults[0].doctor_id;
+
+      // Prepare prescriptions data
+      const values = medicines.map((med) => [
+        appointment_id,
+        doctor_id, // Use fetched doctor_id
+        med.medicine_name,
+        med.medicine_dosage,
+      ]);
+
+      // Insert prescriptions
+      const query = `
+        INSERT INTO PRESCRIPTIONS (appointment_id, doctor_id, medicine_name, medicine_dosage)
+        VALUES ?
+      `;
+
+      db.query(query, [values], (err, result) => {
+        if (err) {
+          console.error("Error adding prescriptions:", err);
+          return res
+            .status(500)
+            .json({ message: "Failed to add prescriptions" });
+        }
+
+        res.status(201).json({
+          message: "Prescriptions added successfully",
+          affectedRows: result.affectedRows,
+        });
+      });
     }
-
-    res.status(201).json({
-      message: "Prescriptions added successfully",
-      affectedRows: result.affectedRows,
-    });
-  });
+  );
 });
 
 // Delete appointment request using appointment_id
