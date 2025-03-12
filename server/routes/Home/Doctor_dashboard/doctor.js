@@ -3,6 +3,40 @@ const db = require("../../../database/db.js");
 
 const router = express.Router();
 
+router.get(
+  "/appointments/:patient_name/:patient_number/:appointment_id",
+  (req, res) => {
+    // console.log(req.params);
+    const { patient_name, patient_number, appointment_id } = req.params;
+    const query = `
+    SELECT p.*, d.doctor_name
+FROM PRESCRIPTIONS p
+JOIN APPOINTMENTS a ON p.appointment_id = a.appointment_id
+JOIN DOCTORS d ON p.doctor_id = d.doctor_id
+WHERE a.appointment_id = (
+    SELECT appointment_id
+    FROM APPOINTMENTS
+    WHERE patient_name = ?
+      AND patient_contact = ?
+      AND appointment_id !=?
+    ORDER BY appointment_id DESC
+    LIMIT 1
+)`;
+    db.query(
+      query,
+      [patient_name, patient_number, appointment_id],
+      (err, results) => {
+        if (err) {
+          console.error("Error fetching past appointments", err);
+          res
+            .status(500)
+            .json({ message: "Failed to fetch past appointments" });
+        }
+        res.status(200).json(results);
+      }
+    );
+  }
+);
 // Get all appointments for a doctor
 router.get("/appointments/:user_id", (req, res) => {
   const { user_id } = req.params;

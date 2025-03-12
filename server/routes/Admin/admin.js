@@ -125,7 +125,7 @@ router.post("/doctors", (req, res) => {
         await connection.promise().rollback();
         connection.release();
         res.status(500).json({
-          message: "Operation failed",
+          message: "Operation failed ",
           error: error.message,
         });
       }
