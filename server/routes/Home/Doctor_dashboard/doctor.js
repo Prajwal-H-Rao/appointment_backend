@@ -6,33 +6,61 @@ const router = express.Router();
 router.get(
   "/appointments/:patient_name/:patient_number/:appointment_id",
   (req, res) => {
-    // console.log(req.params);
     const { patient_name, patient_number, appointment_id } = req.params;
     const query = `
-    SELECT p.*, d.doctor_name
-FROM PRESCRIPTIONS p
-JOIN APPOINTMENTS a ON p.appointment_id = a.appointment_id
-JOIN DOCTORS d ON p.doctor_id = d.doctor_id
-WHERE a.appointment_id = (
-    SELECT appointment_id
-    FROM APPOINTMENTS
-    WHERE patient_name = ?
-      AND patient_contact = ?
-      AND appointment_id !=?
-    ORDER BY appointment_id DESC
-    LIMIT 1
-)`;
+      SELECT 
+        p.prescription_id,
+        p.medicine_name,
+        p.medicine_dosage,
+        d.doctor_name,
+        a.appointment_id,
+        a.appointment_date
+      FROM PRESCRIPTIONS p
+      JOIN APPOINTMENTS a ON p.appointment_id = a.appointment_id
+      JOIN DOCTORS d ON p.doctor_id = d.doctor_id
+      WHERE a.appointment_id IN (
+        SELECT appointment_id
+        FROM APPOINTMENTS
+        WHERE patient_name = ?
+          AND patient_contact = ?
+          AND appointment_id != ?
+      )
+      ORDER BY a.appointment_id DESC`;
+
     db.query(
       query,
       [patient_name, patient_number, appointment_id],
       (err, results) => {
         if (err) {
           console.error("Error fetching past appointments", err);
-          res
+          return res
             .status(500)
             .json({ message: "Failed to fetch past appointments" });
         }
-        res.status(200).json(results);
+
+        // Group by appointment_id while preserving order
+        const grouped = {};
+        let currentAppointment = null;
+
+        results.forEach((row) => {
+          if (!grouped[row.appointment_id]) {
+            grouped[row.appointment_id] = {
+              appointment_id: row.appointment_id,
+              doctor_name: row.doctor_name,
+              appointment_date: row.appointment_date,
+              prescriptions: [],
+            };
+            currentAppointment = grouped[row.appointment_id];
+          }
+
+          currentAppointment.prescriptions.push({
+            prescription_id: row.prescription_id,
+            medicine_name: row.medicine_name,
+            medicine_dosage: row.medicine_dosage,
+          });
+        });
+
+        res.status(200).json(Object.values(grouped));
       }
     );
   }
